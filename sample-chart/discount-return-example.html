@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discount vs. Return Rate Scatter Plot</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* Basic styling for the chart container */
+        .chart-container {
+            font-family: sans-serif;
+            margin: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            max-width: 800px; /* Limit max width */
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Style for the SVG element */
+        svg {
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        /* Style for axis labels */
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Style for data points (circles) */
+        .dot {
+            fill: teal; /* Default circle color */
+            opacity: 0.7;
+            transition: opacity 0.2s ease; /* Smooth transition on hover */
+        }
+
+        .dot:hover {
+            opacity: 1; /* Increase opacity on hover */
+        }
+
+        /* Style for tooltips */
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border-radius: 4px;
+            pointer-events: none; /* Allows mouse events to pass through */
+            opacity: 0; /* Start hidden */
+            transition: opacity 0.2s ease;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chart-container">
+        <h2>Discount Rate vs. Return Rate Scatter Plot</h2>
+        <svg id="discount-return-scatter"></svg>
+    </div>
+
+    <div class="tooltip"></div>
+
+    <script>
+        // Your CSV data as a string
+        const csvDataString = `Product_Price,Discount_Rate,Product_Rating,Number_of_Reviews,Stock_Availability,Days_to_Deliver,Return_Rate,Category_ID
+199.67141530112326,0.1770236095385294,4.41107090511057,62.0,1.0,9.0,0.18511563152054977,5.0
+136.17356988288154,0.041466975212824844,3.033533568980212,201.0,1.0,3.0,0.3846390381981175,10.0
+214.76885381006923,0.2761974130074415,2.8668809113138582,479.0,1.0,19.0,0.05641013710909868,4.0
+302.30298564080255,0.09425356031693806,4.47347279615823,252.0,1.0,11.0,,7.0
+126.58466252766641,0.4118445340829866,3.553081672510545,671.0,1.0,14.0,0.6721629420243134,6.0`;
+
+        // Step 1: Parse the CSV data
+        const data = d3.csvParse(csvDataString, d => {
+            // Convert relevant columns to numbers, handle missing Return_Rate
+            return {
+                Product_Price: +d.Product_Price,
+                Discount_Rate: +d.Discount_Rate,
+                Product_Rating: +d.Product_Rating,
+                Number_of_Reviews: +d.Number_of_Reviews,
+                Stock_Availability: +d.Stock_Availability,
+                Days_to_Deliver: +d.Days_to_Deliver,
+                Return_Rate: d.Return_Rate ? +d.Return_Rate : NaN, // Handle missing value
+                Category_ID: +d.Category_ID
+            };
+        });
+
+        // Filter out rows with missing or invalid Discount_Rate or Return_Rate
+        const filteredData = data.filter(d => !isNaN(d.Discount_Rate) && !isNaN(d.Return_Rate));
+
+        // Step 2: Set up chart dimensions
+        const margin = { top: 20, right: 30, bottom: 60, left: 70 };
+        const width = 600 - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
+
+        // Step 3: Select the SVG element and set its dimensions
+        const svg = d3.select("#discount-return-scatter")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g") // Append a group element to apply margins
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Step 4: Create scales for the x and y axes
+        // X-axis: Discount_Rate (Linear Scale)
+        const xScale = d3.scaleLinear()
+            .domain([0, d3.max(filteredData, d => d.Discount_Rate)]) // Domain from 0 to max discount rate
+            .range([0, width]); // Range from 0 to chart width
+
+        // Y-axis: Return_Rate (Linear Scale)
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(filteredData, d => d.Return_Rate)]) // Domain from 0 to max return rate
+            .range([height, 0]); // Range from chart height to 0
+
+        // Step 5: Create and append the axes
+        // X-axis
+        svg.append("g")
+            .attr("transform", `translate(0,${height})`) // Position at the bottom
+            .call(d3.axisBottom(xScale).tickFormat(d3.format(".0%"))); // Create and draw the axis, format as percentage
+
+        // Y-axis
+        svg.append("g")
+            .call(d3.axisLeft(yScale).tickFormat(d3.format(".0%"))); // Create and draw the axis, format as percentage
+
+        // Step 6: Add axis labels
+        // X-axis label
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("x", width / 2)
+            .attr("y", height + margin.bottom - 10)
+            .attr("text-anchor", "middle")
+            .text("Discount Rate");
+
+        // Y-axis label
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("transform", "rotate(-90)") // Rotate for vertical label
+            .attr("y", 0 - margin.left + 15) // Position to the left of the axis
+            .attr("x", 0 - (height / 2))
+            .attr("dy", "1em") // Adjust vertical position
+            .attr("text-anchor", "middle")
+            .text("Return Rate");
+
+        // Step 7: Create and append the data points (circles)
+        svg.selectAll(".dot") // Select all elements with class "dot"
+            .data(filteredData) // Bind the filtered data
+            .enter() // For each data point
+            .append("circle") // Append a circle
+            .attr("class", "dot") // Add a class for styling
+            .attr("cx", d => xScale(d.Discount_Rate)) // Set x position based on Discount_Rate
+            .attr("cy", d => yScale(d.Return_Rate)) // Set y position based on Return_Rate
+            .attr("r", 5) // Set a fixed radius for the circles
+            .on("mouseover", function(event, d) { // Add mouseover event for tooltip
+                const tooltip = d3.select(".tooltip");
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9); // Make tooltip visible
+
+                tooltip.html(`Discount: ${(d.Discount_Rate * 100).toFixed(2)}%<br/>Return Rate: ${(d.Return_Rate * 100).toFixed(2)}%`)
+                    .style("left", (event.pageX + 10) + "px") // Position tooltip near mouse
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function(event, d) { // Add mouseout event to hide tooltip
+                const tooltip = d3.select(".tooltip");
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0); // Hide tooltip
+            });
+
+    </script>
+
+</body>
+</html>

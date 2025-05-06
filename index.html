@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Data Visualization Dashboard</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .nav-item {
+            padding: 12px 15px;
+            background-color: #f0f8ff;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #0066cc;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border-left: 4px solid #0066cc;
+        }
+        .nav-item:hover {
+            background-color: #e6f2ff;
+            transform: translateX(5px);
+        }
+        .description {
+            margin-bottom: 20px;
+            color: #666;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>E-commerce Data Visualization Dashboard</h1>
+        
+        <div class="description">
+            <p>Welcome to the E-commerce Data Visualization Dashboard. This dashboard provides various visualizations of e-commerce product performance data. Click on any of the links below to view different charts and analyses.</p>
+        </div>
+        
+        <div class="nav-menu">
+            <a href="category-rating-bar-chart.html" class="nav-item">Category Performance Bar Chart</a>
+            <a href="discount-return.html" class="nav-item">Discount vs. Return Rate Scatter Plot</a>
+            <a href="distribution-days-deliver.html" class="nav-item">Delivery Time Distribution Histogram</a>
+            <a href="reviews-rating.html" class="nav-item">Reviews vs. Rating Scatter Plot</a>
+            <a href="scatter.html" class="nav-item">Product Price vs. Rating Scatter Plot</a>
+            <a href="table.html" class="nav-item">Product Table</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Product Performance</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            font-family: Arial, sans-serif;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        h1 {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        .loading {
+            text-align: center;
+            font-style: italic;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>E-commerce Product Performance Data</h1>
+    <table id="productTable">
+        <thead>
+            <tr>
+                <th>Product Price</th>
+                <th>Discount Rate</th>
+                <th>Product Rating</th>
+                <th>Number of Reviews</th>
+                <th>Stock Availability</th>
+                <th>Days to Deliver</th>
+                <th>Return Rate</th>
+                <th>Category ID</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="8" class="loading">Loading data...</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="text-align: center; font-style: italic;">Note: This table shows 20 random records from the e-commerce product performance dataset.</p>
+    
+    <!-- Added home link -->
+    <div style="text-align: center; margin: 20px 0;">
+        <a href="index.html" style="text-decoration: none; padding: 10px 20px; background-color: #4CAF50; color: white; border-radius: 4px; font-family: Arial, sans-serif;">Back to Home</a>
+    </div>
+
+    <script>
+        // Function to fetch and parse CSV data
+        async function fetchCSV() {
+            try {
+                const response = await fetch('archive/ecommerce_product_performance.csv');
+                const data = await response.text();
+                return parseCSV(data);
+            } catch (error) {
+                console.error('Error fetching CSV:', error);
+                document.querySelector('.loading').textContent = 'Error loading data. Please try again later.';
+                return null;
+            }
+        }
+
+        // Function to parse CSV data
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n');
+            const headers = lines[0].split(',');
+            
+            const records = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim() === '') continue;
+                
+                const values = lines[i].split(',');
+                const record = {};
+                
+                headers.forEach((header, index) => {
+                    record[header] = values[index];
+                });
+                
+                records.push(record);
+            }
+            
+            return records;
+        }
+
+        // Function to get random items from array
+        function getRandomItems(array, count) {
+            const shuffled = [...array].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        // Function to format cell value
+        function formatValue(value) {
+            if (value === undefined || value === '') {
+                return 'N/A';
+            }
+            
+            // Format numeric values
+            if (!isNaN(value) && value.includes('.')) {
+                return parseFloat(value).toFixed(2);
+            }
+            
+            return value;
+        }
+
+        // Function to populate table with data
+        function populateTable(data) {
+            const tableBody = document.querySelector('#productTable tbody');
+            tableBody.innerHTML = ''; // Clear loading message
+            
+            // Get 20 random records
+            const randomRecords = getRandomItems(data, 20);
+            
+            // Add rows to table
+            randomRecords.forEach(record => {
+                const row = document.createElement('tr');
+                
+                // Add cells for each column
+                row.innerHTML = `
+                    <td>${formatValue(record.Product_Price)}</td>
+                    <td>${formatValue(record.Discount_Rate)}</td>
+                    <td>${formatValue(record.Product_Rating)}</td>
+                    <td>${formatValue(record.Number_of_Reviews)}</td>
+                    <td>${formatValue(record.Stock_Availability)}</td>
+                    <td>${formatValue(record.Days_to_Deliver)}</td>
+                    <td>${formatValue(record.Return_Rate)}</td>
+                    <td>${formatValue(record.Category_ID)}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Load data when page loads
+        window.addEventListener('DOMContentLoaded', async () => {
+            const data = await fetchCSV();
+            if (data) {
+                populateTable(data);
+            }
+        });
+    </script>
+</body>
+</html>

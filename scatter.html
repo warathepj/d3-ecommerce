@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Data Scatter Plot</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* Basic styling for the chart container */
+        .chart-container {
+            font-family: sans-serif;
+            margin: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            max-width: 800px; /* Limit max width */
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Add back link styling */
+        .back-link {
+            display: block;
+            margin: 10px 0;
+            text-decoration: none;
+            color: #0066cc;
+            font-weight: bold;
+            font-family: sans-serif;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Style for the SVG element */
+        svg {
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        /* Style for axis labels */
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Style for tooltips */
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border-radius: 4px;
+            pointer-events: none; /* Allows mouse events to pass through */
+            opacity: 0; /* Start hidden */
+            transition: opacity 0.2s ease;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Add back link -->
+    <div style="max-width: 800px; margin: 0 auto;">
+        <a href="index.html" class="back-link">← Back to Dashboard</a>
+    </div>
+
+    <div class="chart-container">
+        <h2>Product Price vs. Rating Scatter Plot</h2>
+        <svg id="scatter-plot"></svg>
+    </div>
+
+    <div class="tooltip"></div>
+
+    <script>
+        // Load the CSV file using d3.csv
+        d3.csv("archive/ecommerce_product_performance.csv").then(function(data) {
+            // Convert relevant columns to numbers
+            data.forEach(d => {
+                d.Product_Price = +d.Product_Price;
+                d.Discount_Rate = +d.Discount_Rate;
+                d.Product_Rating = +d.Product_Rating;
+                d.Number_of_Reviews = +d.Number_of_Reviews;
+                d.Stock_Availability = +d.Stock_Availability;
+                d.Days_to_Deliver = +d.Days_to_Deliver;
+                d.Return_Rate = +d.Return_Rate;
+                d.Category_ID = +d.Category_ID;
+            });
+
+            // Filter out any rows where Product_Price or Product_Rating might be NaN after parsing
+            const filteredData = data.filter(d => !isNaN(d.Product_Price) && !isNaN(d.Product_Rating));
+
+            // Step 2: Set up chart dimensions
+            const margin = { top: 20, right: 30, bottom: 60, left: 70 };
+            const width = 600 - margin.left - margin.right;
+            const height = 400 - margin.top - margin.bottom;
+
+            // Step 3: Select the SVG element and set its dimensions
+            const svg = d3.select("#scatter-plot")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g") // Append a group element to apply margins
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // Step 4: Create scales for the x and y axes
+            // X-axis: Product_Price
+            const xScale = d3.scaleLinear()
+                .domain([0, d3.max(filteredData, d => d.Product_Price)]) // Domain from 0 to max price
+                .range([0, width]); // Range from 0 to chart width
+
+            // Y-axis: Product_Rating
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(filteredData, d => d.Product_Rating)]) // Domain from 0 to max rating
+                .range([height, 0]); // Range from chart height to 0 (SVG y-coordinates are inverted)
+
+            // Step 5: Create and append the axes
+            // X-axis
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`) // Position at the bottom
+                .call(d3.axisBottom(xScale)); // Create and draw the axis
+
+            // Y-axis
+            svg.append("g")
+                .call(d3.axisLeft(yScale)); // Create and draw the axis
+
+            // Step 6: Add axis labels
+            // X-axis label
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("x", width / 2)
+                .attr("y", height + margin.bottom - 10)
+                .attr("text-anchor", "middle")
+                .text("Product Price");
+
+            // Y-axis label
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)") // Rotate for vertical label
+                .attr("y", 0 - margin.left + 15) // Position to the left of the axis
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em") // Adjust vertical position
+                .attr("text-anchor", "middle")
+                .text("Product Rating");
+
+            // Step 7: Create a scale for the circle radius based on Number_of_Reviews
+            const radiusScale = d3.scaleLinear()
+                .domain([0, d3.max(filteredData, d => d.Number_of_Reviews)])
+                .range([3, 15]); // Min radius 3, max radius 15
+
+            // Step 8: Create a color scale based on Discount_Rate
+            const colorScale = d3.scaleLinear()
+                .domain([0, d3.max(filteredData, d => d.Discount_Rate)])
+                .range(["lightblue", "darkblue"]); // Color goes from lightblue to darkblue
+
+            // Step 9: Create and append the data points (circles)
+            svg.selectAll(".dot") // Select all elements with class "dot" (none exist yet)
+                .data(filteredData) // Bind the data to the selection
+                .enter() // For each data point that doesn't have a corresponding element
+                .append("circle") // Append a circle element
+                .attr("class", "dot") // Add a class for styling and selection
+                .attr("cx", d => xScale(d.Product_Price)) // Set x position based on Product_Price
+                .attr("cy", d => yScale(d.Product_Rating)) // Set y position based on Product_Rating
+                .attr("r", d => radiusScale(d.Number_of_Reviews)) // Set radius based on Number_of_Reviews
+                .style("fill", d => colorScale(d.Discount_Rate)) // Set fill color based on Discount_Rate
+                .style("opacity", 0.7) // Add some transparency
+                .on("mouseover", function(event, d) { // Add mouseover event for tooltip
+                    const tooltip = d3.select(".tooltip");
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9); // Make tooltip visible
+
+                    tooltip.html(`Price: ${d.Product_Price.toFixed(2)}<br/>Rating: ${d.Product_Rating.toFixed(2)}<br/>Reviews: ${d.Number_of_Reviews}<br/>Discount: ${(d.Discount_Rate * 100).toFixed(2)}%`)
+                        .style("left", (event.pageX + 10) + "px") // Position tooltip near mouse
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function(event, d) { // Add mouseout event to hide tooltip
+                    const tooltip = d3.select(".tooltip");
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0); // Hide tooltip
+                });
+        }).catch(function(error) {
+            // Handle any errors that occur during loading
+            console.error("Error loading the CSV file:", error);
+            document.querySelector(".chart-container").innerHTML += 
+                `<p style="color: red; text-align: center;">Error loading data: ${error.message}</p>`;
+        });
+    </script>
+
+</body>
+</html>

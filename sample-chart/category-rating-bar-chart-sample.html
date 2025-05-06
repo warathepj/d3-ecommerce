@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Category Performance Bar Chart</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* Basic styling for the chart container */
+        .chart-container {
+            font-family: sans-serif;
+            margin: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            max-width: 800px; /* Limit max width */
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Style for the SVG element */
+        svg {
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        /* Style for axis labels */
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Style for bars */
+        .bar {
+            fill: steelblue; /* Default bar color */
+            transition: fill 0.3s ease; /* Smooth transition on hover */
+        }
+
+        .bar:hover {
+            fill: orange; /* Highlight color on hover */
+        }
+
+        /* Style for tooltips */
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border-radius: 4px;
+            pointer-events: none; /* Allows mouse events to pass through */
+            opacity: 0; /* Start hidden */
+            transition: opacity 0.2s ease;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chart-container">
+        <h2>Average Product Rating by Category ID</h2>
+        <svg id="bar-chart"></svg>
+    </div>
+
+    <div class="tooltip"></div>
+
+    <script>
+        // Your CSV data as a string
+        const csvDataString = `Product_Price,Discount_Rate,Product_Rating,Number_of_Reviews,Stock_Availability,Days_to_Deliver,Return_Rate,Category_ID
+199.67141530112326,0.1770236095385294,4.41107090511057,62.0,1.0,9.0,0.18511563152054977,5.0
+136.17356988288154,0.041466975212824844,3.033533568980212,201.0,1.0,3.0,0.3846390381981175,10.0
+214.76885381006923,0.2761974130074415,2.8668809113138582,479.0,1.0,19.0,0.05641013710909868,4.0
+302.30298564080255,0.09425356031693806,4.47347279615823,252.0,1.0,11.0,,7.0
+126.58466252766641,0.4118445340829866,3.553081672510545,671.0,1.0,14.0,0.6721629420243134,6.0`;
+
+        // Step 1: Parse the CSV data
+        const data = d3.csvParse(csvDataString, d => {
+            // Convert relevant columns to numbers, handle missing Return_Rate
+            return {
+                Product_Price: +d.Product_Price,
+                Discount_Rate: +d.Discount_Rate,
+                Product_Rating: +d.Product_Rating,
+                Number_of_Reviews: +d.Number_of_Reviews,
+                Stock_Availability: +d.Stock_Availability,
+                Days_to_Deliver: +d.Days_to_Deliver,
+                Return_Rate: d.Return_Rate ? +d.Return_Rate : NaN, // Handle missing value
+                Category_ID: +d.Category_ID
+            };
+        });
+
+        // Filter out rows with missing Category_ID or Product_Rating
+        const filteredData = data.filter(d => !isNaN(d.Category_ID) && !isNaN(d.Product_Rating));
+
+        // Step 2: Group data by Category_ID and calculate the average rating
+        const categoryRatings = Array.from(d3.group(filteredData, d => d.Category_ID), ([key, values]) => ({
+            category: key,
+            averageRating: d3.mean(values, d => d.Product_Rating) // Calculate the mean rating
+        }));
+
+        // Filter out categories with NaN average rating (e.g., if a category had no valid ratings)
+        const validCategoryRatings = categoryRatings.filter(d => !isNaN(d.averageRating));
+
+        // Step 3: Set up chart dimensions
+        const margin = { top: 20, right: 30, bottom: 60, left: 70 };
+        const width = 600 - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
+
+        // Step 4: Select the SVG element and set its dimensions
+        const svg = d3.select("#bar-chart")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g") // Append a group element to apply margins
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Step 5: Create scales for the x and y axes
+        // X-axis: Category_ID (Band Scale for discrete categories)
+        const xScale = d3.scaleBand()
+            .domain(validCategoryRatings.map(d => d.category).sort(d3.ascending)) // Use unique sorted categories as domain
+            .range([0, width]) // Range from 0 to chart width
+            .paddingInner(0.1); // Add padding between bars
+
+        // Y-axis: Average Product Rating (Linear Scale)
+        const yScale = d3.scaleLinear()
+            .domain([0, d3.max(validCategoryRatings, d => d.averageRating)]) // Domain from 0 to max average rating
+            .range([height, 0]); // Range from chart height to 0
+
+        // Step 6: Create and append the axes
+        // X-axis
+        svg.append("g")
+            .attr("transform", `translate(0,${height})`) // Position at the bottom
+            .call(d3.axisBottom(xScale)); // Create and draw the axis
+
+        // Y-axis
+        svg.append("g")
+            .call(d3.axisLeft(yScale)); // Create and draw the axis
+
+        // Step 7: Add axis labels
+        // X-axis label
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("x", width / 2)
+            .attr("y", height + margin.bottom - 10)
+            .attr("text-anchor", "middle")
+            .text("Category ID");
+
+        // Y-axis label
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("transform", "rotate(-90)") // Rotate for vertical label
+            .attr("y", 0 - margin.left + 15) // Position to the left of the axis
+            .attr("x", 0 - (height / 2))
+            .attr("dy", "1em") // Adjust vertical position
+            .attr("text-anchor", "middle")
+            .text("Average Product Rating");
+
+        // Step 8: Create and append the bars
+        svg.selectAll(".bar") // Select all elements with class "bar"
+            .data(validCategoryRatings) // Bind the grouped data
+            .enter() // For each data point
+            .append("rect") // Append a rectangle (bar)
+            .attr("class", "bar") // Add a class for styling
+            .attr("x", d => xScale(d.category)) // Set x position based on category
+            .attr("y", d => yScale(d.averageRating)) // Set y position based on average rating
+            .attr("width", xScale.bandwidth()) // Set bar width using band scale's bandwidth
+            .attr("height", d => height - yScale(d.averageRating)) // Set bar height
+            .on("mouseover", function(event, d) { // Add mouseover event for tooltip
+                const tooltip = d3.select(".tooltip");
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9); // Make tooltip visible
+
+                tooltip.html(`Category ID: ${d.category}<br/>Average Rating: ${d.averageRating.toFixed(2)}`)
+                    .style("left", (event.pageX + 10) + "px") // Position tooltip near mouse
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function(event, d) { // Add mouseout event to hide tooltip
+                const tooltip = d3.select(".tooltip");
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0); // Hide tooltip
+            });
+
+    </script>
+
+</body>
+</html>
